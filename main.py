@@ -168,7 +168,7 @@ class PatientForm:
         self.search_entry = None
         self.file_listbox = None
         self.search_label = None
-        self.submit_button = None
+        self.search_button = None
         self.age_entry = None
         self.age_label = None
         self.id_label = None
@@ -179,9 +179,10 @@ class PatientForm:
         self.f_name_label = None
         self.original_treeview_data = []
         self.root = root
-        # self.style = ttk.Style(self.root)
+        self.style = ttk.Style(root)
         # self.root.call("source", "forest-light.tcl")
         # self.style.theme_use("forest-light")
+
         self.root.title("SmartDoc")
         # Create Tab Control
         self.tab_control = ttk.Notebook(root)
@@ -192,6 +193,34 @@ class PatientForm:
         # Medical History Tab
         self.search_tab = ttk.Frame(self.tab_control)
         self.tab_control.add(self.search_tab, text='חיפוש מטופל')
+
+        # Define a custom style with rounded corners for ttk.Entry
+        self.style.configure("Rounded.TEntry",
+                             relief="solid",  # Border style
+                             borderwidth=2,  # Border width
+                             background="#ffffff",  # Background color
+                             foreground="#2A3335",  # Text color
+                             padding=5)  # Padding inside the entry widget
+
+        # You can optionally add a focus highlight color
+        self.style.map("Rounded.TEntry",
+                       foreground=[('focus', '#2A3335')],
+                       background=[('focus', 'lightblue')])
+
+        # Customize the tab appearance using ttk.Style
+        style = ttk.Style()
+        style.configure("TNotebook.Tab",
+                        font=("Arial", 12, "bold"),  # Font style
+                        padding=[10, 5],  # Tab padding
+                        background="#0A97B0",  # Tab background color
+                        foreground="#37AFE1")  # Tab text color
+
+        style.map("TNotebook.Tab",
+                  background=[('selected', '#0A97B0')],  # Change background when selected
+                  foreground=[('selected', '#2A3335')])  # Change text color when selected
+
+        style.configure("Treeview", font=("Arial", 12))  # Change font and size
+        style.configure("Treeview.Heading", font=("Arial", 12, "bold"))  # Change header font and size
 
         # Pack the Tab Control
         self.tab_control.pack(expand=1, fill="both", padx=10, pady=5)
@@ -225,36 +254,39 @@ class PatientForm:
         # padY_size=100
         padX_size = 10
         padX_age_size = 10
-        mySticky = 'e'
         # Hebrew font configuration
         hebrew_font = font.Font(family="Arial", size=14)
 
         self.f_name_label = tk.Label(self.patient_tab, text="שם פרטי", font=hebrew_font, anchor='center')
         self.f_name_label.grid(row=0, column=1, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
-        self.f_name_entry = tk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right')
+        self.f_name_entry = ttk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right',
+                                      style="Rounded.TEntry")
         self.f_name_entry.grid(row=0, column=0, padx=padX_size, pady=5, sticky='e')  # align the entry to the right
 
         self.l_name_label = tk.Label(self.patient_tab, text="שם משפחה", font=hebrew_font, anchor='center')
         self.l_name_label.grid(row=1, column=1, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
-        self.l_name_entry = tk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right')
+        self.l_name_entry = ttk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right',
+                                      style="Rounded.TEntry")
         self.l_name_entry.grid(row=1, column=0, padx=padX_size, pady=5, sticky='e')  # align the entry to the right
 
         # id input
         self.id_label = tk.Label(self.patient_tab, text="תעודת זהות", font=hebrew_font, anchor='center')
         self.id_label.grid(row=2, column=1, padx=padX_size, pady=5, sticky='ew')
-        self.id_entry = tk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right')
+        self.id_entry = ttk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right',
+                                  style="Rounded.TEntry")
         self.id_entry.grid(row=2, column=0, padx=padX_size, pady=5, sticky='e')
 
         # Age Input
         self.age_label = tk.Label(self.patient_tab, text="גיל", font=hebrew_font, anchor='center')
         self.age_label.grid(row=3, column=1, padx=padX_size, pady=5, sticky='ew')
-        self.age_entry = tk.Entry(self.patient_tab, font=hebrew_font, width=10, justify='right')
+        self.age_entry = ttk.Entry(self.patient_tab, font=hebrew_font, width=10, justify='right',
+                                   style="Rounded.TEntry")
         self.age_entry.grid(row=3, column=0, padx=padX_age_size, pady=5, sticky='e')
 
         # Submit Button
-        self.submit_button = tk.Button(self.patient_tab, text=" WORD צור קובץ ", font=hebrew_font,
+        self.search_button = tk.Button(self.patient_tab, text=" WORD צור קובץ ", font=hebrew_font,
                                        command=self.collect_data)
-        self.submit_button.grid(row=4, column=0, padx=padX_size, pady=10, sticky='we')
+        self.search_button.grid(row=4, column=0, padx=padX_size, pady=10, sticky='we')
 
     def create_search_tab(self):
         hebrew_font = ("Arial", 14)
@@ -266,17 +298,22 @@ class PatientForm:
         self.search_tab.rowconfigure(1, weight=1)  # Make treeFrame's row expandable
 
         self.search_label = tk.Label(self.search_tab, text="חיפוש מטופל", font=hebrew_font, anchor='center')
-        self.search_label.grid(row=0, column=2, padx=10, pady=5, sticky='we')
-        self.search_entry = tk.Entry(self.search_tab, font=hebrew_font, width=30, justify='right')
-        self.search_entry.grid(row=0, column=1, padx=10, pady=5, sticky='we')
+        self.search_label.grid(row=0, column=3, padx=10, pady=5, sticky='we')
+        self.search_entry = ttk.Entry(self.search_tab, font=hebrew_font, width=30, justify='right',
+                                      style="Rounded.TEntry")
+        self.search_entry.grid(row=0, column=2, padx=10, pady=5, sticky='we')
 
-        # Submit Button
-        self.submit_button = tk.Button(self.search_tab, text=" חיפוש", font=hebrew_font,
+        # Search Button
+        self.search_button = tk.Button(self.search_tab, text="חיפוש", font=hebrew_font,
                                        command=self.search_data)
-        self.submit_button.grid(row=0, column=0, sticky='we', padx=10, pady=10)
+        self.search_button.grid(row=0, column=1, sticky='we', padx=10, pady=10)
+
+        self.delete_button = tk.Button(self.search_tab, text="איפוס", font=hebrew_font,
+                                       command=self.delete_search_data)
+        self.delete_button.grid(row=0, column=0, sticky='we', padx=10, pady=10)
 
         self.treeFrame = ttk.Frame(self.search_tab)
-        self.treeFrame.grid(row=1, column=0, padx=10, pady=10, columnspan=3, sticky='nswe')
+        self.treeFrame.grid(row=1, column=0, padx=10, pady=10, columnspan=4, sticky='nswe')
 
         self.treeScroll = ttk.Scrollbar(self.treeFrame)
         self.treeScroll.pack(side="right", fill="y")
@@ -294,6 +331,10 @@ class PatientForm:
         self.treeview.pack(fill="both", expand=True)
         self.treeScroll.config(command=self.treeview.yview)
         load_data(self)
+
+    def delete_search_data(self):
+        self.search_entry.delete(0, tk.END)
+        self.search_data()
 
     def collect_data(self):
         first_name = self.f_name_entry.get()
@@ -315,6 +356,11 @@ class PatientForm:
         current_date = datetime.now().strftime('%d-%m-%Y')  # Use hyphens instead of slashes
         docx = create_docx(first_name, last_name, ID, age)
         insert_row(first_name, last_name, ID, age, docx, current_date)
+        # Clear all entry widgets
+        self.f_name_entry.delete(0, tk.END)
+        self.l_name_entry.delete(0, tk.END)
+        self.id_entry.delete(0, tk.END)
+        self.age_entry.delete(0, tk.END)
         load_data(self)
         # patient = Patient(first_name, last_name, ID, age)
 
