@@ -11,7 +11,6 @@ import openpyxl
 os.chdir(sys.path[0])
 
 
-
 def open_word_document(event):
     # Get the selected item
     selected_item = event.widget.selection()
@@ -68,7 +67,7 @@ def load_data(self):
             self.treeview.delete(item)
 
         # Predefined columns in the desired order
-        cols = ("קובץ","תאריך ביקור", "גיל", "שם פרטי", "שם משפחה", "תעודה מזהה")
+        cols = ("קובץ", "תאריך ביקור", "גיל", "שם פרטי", "שם משפחה", "תעודה מזהה")
 
         # Configure Treeview columns
         self.treeview['columns'] = cols
@@ -164,7 +163,6 @@ def insert_row(first_name, last_name, ID, age, time, docx):
 
 class PatientForm:
 
-
     def __init__(self, root):
         self.treeview = None
         self.search_entry = None
@@ -181,9 +179,9 @@ class PatientForm:
         self.f_name_label = None
         self.original_treeview_data = []
         self.root = root
-        self.style = ttk.Style(self.root)
-        self.root.call("source","forest-light.tcl")
-        self.style.theme_use("forest-light")
+        # self.style = ttk.Style(self.root)
+        # self.root.call("source", "forest-light.tcl")
+        # self.style.theme_use("forest-light")
         self.root.title("SmartDoc")
         # Create Tab Control
         self.tab_control = ttk.Notebook(root)
@@ -221,41 +219,42 @@ class PatientForm:
                     seen_items.add(item_tuple)
 
     def create_patient_info_tab(self):
-
+        # Configure columns to allow proper space distribution
+        self.patient_tab.grid_columnconfigure(0, weight=1, minsize=200)  # For the entry fields
+        self.patient_tab.grid_columnconfigure(1, weight=1)  # For the labels, no expansion
         # padY_size=100
-        padX_size = 20
-        padX_age_size = 20
+        padX_size = 10
+        padX_age_size = 10
         mySticky = 'e'
         # Hebrew font configuration
         hebrew_font = font.Font(family="Arial", size=14)
 
-        # Name Input with RTL support
         self.f_name_label = tk.Label(self.patient_tab, text="שם פרטי", font=hebrew_font, anchor='center')
-        self.f_name_label.grid(row=0, column=1, padx=padX_size, pady=5, sticky='e')
+        self.f_name_label.grid(row=0, column=1, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
         self.f_name_entry = tk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right')
-        self.f_name_entry.grid(row=0, column=0, padx=padX_size, pady=5, sticky='w')
+        self.f_name_entry.grid(row=0, column=0, padx=padX_size, pady=5, sticky='e')  # align the entry to the right
 
         self.l_name_label = tk.Label(self.patient_tab, text="שם משפחה", font=hebrew_font, anchor='center')
-        self.l_name_label.grid(row=1, column=1, padx=padX_size, pady=5, sticky='e')
+        self.l_name_label.grid(row=1, column=1, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
         self.l_name_entry = tk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right')
-        self.l_name_entry.grid(row=1, column=0, padx=padX_size, pady=5, sticky='w')
+        self.l_name_entry.grid(row=1, column=0, padx=padX_size, pady=5, sticky='e')  # align the entry to the right
 
         # id input
         self.id_label = tk.Label(self.patient_tab, text="תעודת זהות", font=hebrew_font, anchor='center')
-        self.id_label.grid(row=2, column=1, padx=padX_size, pady=5, sticky='e')
+        self.id_label.grid(row=2, column=1, padx=padX_size, pady=5, sticky='ew')
         self.id_entry = tk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right')
-        self.id_entry.grid(row=2, column=0, padx=padX_size, pady=5, sticky='w')
+        self.id_entry.grid(row=2, column=0, padx=padX_size, pady=5, sticky='e')
 
         # Age Input
         self.age_label = tk.Label(self.patient_tab, text="גיל", font=hebrew_font, anchor='center')
-        self.age_label.grid(row=3, column=1, padx=padX_size, pady=5, sticky='e')
+        self.age_label.grid(row=3, column=1, padx=padX_size, pady=5, sticky='ew')
         self.age_entry = tk.Entry(self.patient_tab, font=hebrew_font, width=10, justify='right')
         self.age_entry.grid(row=3, column=0, padx=padX_age_size, pady=5, sticky='e')
 
         # Submit Button
         self.submit_button = tk.Button(self.patient_tab, text=" WORD צור קובץ ", font=hebrew_font,
                                        command=self.collect_data)
-        self.submit_button.grid(row=4, column=0, columnspan=2, padx=padX_size, pady=10, sticky='we')
+        self.submit_button.grid(row=4, column=0, padx=padX_size, pady=10, sticky='we')
 
     def create_search_tab(self):
         hebrew_font = ("Arial", 14)
@@ -282,7 +281,7 @@ class PatientForm:
         self.treeScroll = ttk.Scrollbar(self.treeFrame)
         self.treeScroll.pack(side="right", fill="y")
 
-        cols = ("קובץ","תאריך ביקור", "גיל", "שם פרטי", "שם משפחה", "תעודה מזהה")
+        cols = ("קובץ", "תאריך ביקור", "גיל", "שם פרטי", "שם משפחה", "תעודה מזהה")
         self.treeview = ttk.Treeview(self.treeFrame, show="headings",
                                      yscrollcommand=self.treeScroll.set, columns=cols, height=13)
         self.treeview.column("קובץ", width=100)
@@ -318,3 +317,14 @@ class PatientForm:
         insert_row(first_name, last_name, ID, age, docx, current_date)
         load_data(self)
         # patient = Patient(first_name, last_name, ID, age)
+
+
+def main():
+    root = tk.Tk()
+    root.option_add('*Font', 'Arial 14')
+    PatientForm(root)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
