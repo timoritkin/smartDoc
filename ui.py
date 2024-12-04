@@ -11,6 +11,32 @@ import openpyxl
 os.chdir(sys.path[0])
 
 
+
+def open_word_document(event):
+    # Get the selected item
+    selected_item = event.widget.selection()
+    if not selected_item:
+        return
+
+    # Get the Word file path from the first column
+    word_file = event.widget.item(selected_item, 'values')[0]
+
+    # Check if file exists before attempting to open
+    if word_file and os.path.exists(word_file):
+        try:
+            # Use the default application to open the file
+            if os.name == 'nt':  # Windows
+                os.startfile(word_file)
+            elif os.name == 'posix':  # macOS and Linux
+                subprocess.run(['open', word_file], check=True)
+            else:
+                print("Unsupported operating system")
+        except Exception as e:
+            print(f"Error opening file: {e}")
+    else:
+        print("File not found")
+
+
 def load_data(self):
     try:
         # Verify file path
@@ -42,13 +68,14 @@ def load_data(self):
             self.treeview.delete(item)
 
         # Predefined columns in the desired order
-        cols = ("קובץ WORD", "גיל", "שם פרטי", "שם משפחה", "תעודה מזהה")
+        cols = ("קובץ","תאריך ביקור", "גיל", "שם פרטי", "שם משפחה", "תעודה מזהה")
 
         # Configure Treeview columns
         self.treeview['columns'] = cols
         for col in cols:
             self.treeview.heading(col, text=col, anchor="center")
             self.treeview.column(col, width=100, anchor="center")
+        self.treeview.bind('<Double-1>', open_word_document)
 
         # Insert data rows, mapping to normalized columns
         for row in list_values[1:]:
@@ -57,7 +84,8 @@ def load_data(self):
 
             # Extract values in the desired order
             ordered_row = [
-                row_dict.get("קובץ WORD", ""),
+                row_dict.get("קובץ", ""),
+                row_dict.get("תאריך ביקור", ""),
                 row_dict.get("גיל", ""),
                 row_dict.get("שם פרטי", ""),
                 row_dict.get("שם משפחה", ""),
@@ -66,6 +94,10 @@ def load_data(self):
 
             # Insert the row with ordered values
             self.treeview.insert("", "end", values=ordered_row)
+            # After populating the treeview, store the original data
+            for child in self.treeview.get_children():
+                self.original_treeview_data.append(self.treeview.item(child)['values'])
+
 
     except FileNotFoundError:
         print(f"Error: File '{path}' not found.")
@@ -114,8 +146,25 @@ def create_docx(f_name, l_name, id_num, age):
     else:  # For Linux
         subprocess.run(["xdg-open", file_path])
 
+    return file_path
+
+
+def insert_row(first_name, last_name, ID, age, time, docx):
+    # Verify file path
+    path = "patients data.xlsx"
+
+    # Load workbook and active sheet
+    workbook = openpyxl.load_workbook(path)
+    sheet = workbook.active
+
+    row_values = [ID, first_name, last_name, age, docx, time]
+    sheet.append(row_values)
+    workbook.save(path)
+
 
 class PatientForm:
+
+
     def __init__(self, root):
         self.treeview = None
         self.search_entry = None
@@ -130,7 +179,11 @@ class PatientForm:
         self.l_name_label = None
         self.f_name_entry = None
         self.f_name_label = None
+        self.original_treeview_data = []
         self.root = root
+        self.style = ttk.Style(self.root)
+        self.root.call("source","forest-light.tcl")
+        self.style.theme_use("forest-light")
         self.root.title("SmartDoc")
         # Create Tab Control
         self.tab_control = ttk.Notebook(root)
@@ -148,6 +201,24 @@ class PatientForm:
         self.create_patient_info_tab()
         # Medical History Tab Contents
         self.create_search_tab()
+
+    def search_data(self):
+        search_term = self.search_entry.get().lower()
+
+        # Clear existing items in treeview
+        for item in self.treeview.get_children():
+            self.treeview.delete(item)
+
+        # Reinsert items that match the search term
+        seen_items = set()
+        for child in self.original_treeview_data:
+            # Convert all values to strings and check for search term
+            if any(search_term in str(value).lower() for value in child):
+                # Use tuple of values to check for duplicates
+                item_tuple = tuple(child)
+                if item_tuple not in seen_items:
+                    self.treeview.insert('', 'end', values=child)
+                    seen_items.add(item_tuple)
 
     def create_patient_info_tab(self):
 
@@ -193,7 +264,7 @@ class PatientForm:
         self.search_tab.columnconfigure(0, weight=1)  # Search button
         self.search_tab.columnconfigure(1, weight=3)  # Search entry
         self.search_tab.columnconfigure(2, weight=1)  # Label
-        self.search_tab.rowconfigure(1, weight=3)  # Label
+        self.search_tab.rowconfigure(1, weight=1)  # Make treeFrame's row expandable
 
         self.search_label = tk.Label(self.search_tab, text="חיפוש מטופל", font=hebrew_font, anchor='center')
         self.search_label.grid(row=0, column=2, padx=10, pady=5, sticky='we')
@@ -202,7 +273,7 @@ class PatientForm:
 
         # Submit Button
         self.submit_button = tk.Button(self.search_tab, text=" חיפוש", font=hebrew_font,
-                                       command=self.collect_data)
+                                       command=self.search_data)
         self.submit_button.grid(row=0, column=0, sticky='we', padx=10, pady=10)
 
         self.treeFrame = ttk.Frame(self.search_tab)
@@ -211,17 +282,17 @@ class PatientForm:
         self.treeScroll = ttk.Scrollbar(self.treeFrame)
         self.treeScroll.pack(side="right", fill="y")
 
-        cols = ("קובץ WORD", "גיל", "שם פרטי", "שם משפחה", "תעודה מזהה")
+        cols = ("קובץ","תאריך ביקור", "גיל", "שם פרטי", "שם משפחה", "תעודה מזהה")
         self.treeview = ttk.Treeview(self.treeFrame, show="headings",
                                      yscrollcommand=self.treeScroll.set, columns=cols, height=13)
-
-        self.treeview.column("קובץ WORD", width=100)  # Corrected column name
+        self.treeview.column("קובץ", width=100)
+        self.treeview.column("תאריך ביקור", width=100)
         self.treeview.column("גיל", width=50)
         self.treeview.column("שם משפחה", width=100)
         self.treeview.column("שם פרטי", width=100)
         self.treeview.column("תעודה מזהה", width=100)
 
-        self.treeview.pack()
+        self.treeview.pack(fill="both", expand=True)
         self.treeScroll.config(command=self.treeview.yview)
         load_data(self)
 
@@ -241,5 +312,9 @@ class PatientForm:
             messagebox.showerror("שגיאת קלט", "!הגיל חייב להיות מספר")
             return
 
-        create_docx(first_name, last_name, ID, age)
+        # Get the current date in the desired format (e.g., dd-mm-yyyy)
+        current_date = datetime.now().strftime('%d-%m-%Y')  # Use hyphens instead of slashes
+        docx = create_docx(first_name, last_name, ID, age)
+        insert_row(first_name, last_name, ID, age, docx, current_date)
+        load_data(self)
         # patient = Patient(first_name, last_name, ID, age)
