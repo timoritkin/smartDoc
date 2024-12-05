@@ -37,6 +37,7 @@ def open_word_document(event):
 
 
 def load_data(self):
+    global path
     try:
         # Verify file path
         path = "patients data.xlsx"
@@ -106,7 +107,7 @@ def load_data(self):
         print(f"An unexpected error occurred: {e}")
 
 
-def create_docx(f_name, l_name, id_num, age):
+def create_docx(f_name, l_name, id_num, age, date):
     # Load the template
     doc = DocxTemplate('template/Clalit mushlam template.docx')
 
@@ -121,17 +122,14 @@ def create_docx(f_name, l_name, id_num, age):
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
-    # Get the current date in the desired format (e.g., dd-mm-yyyy)
-    current_date = datetime.now().strftime('%d-%m-%Y')  # Use hyphens instead of slashes
-
     # Prepare context for the document
-    context = {'f_name': f_name, 'l_name': l_name, 'id': id_num, 'age': age}
+    context = {'f_name': f_name, 'l_name': l_name, 'id': id_num, 'age': age, 'date': date}
 
     # Render the document with the provided data
     doc.render(context)
 
     # Save the document with a new name
-    file_name = f'{f_name}_{l_name}_{id_num}_{current_date}_doc.docx'
+    file_name = f'{f_name}_{l_name}_{id_num}_{date}_doc.docx'
 
     # Combine the folder path with the file name
     file_path = os.path.join(folder_path, file_name)
@@ -164,6 +162,8 @@ def insert_row(first_name, last_name, ID, age, time, docx):
 class PatientForm:
 
     def __init__(self, root):
+        self.delete_button = None
+        self.create_button = None
         self.treeview = None
         self.search_entry = None
         self.file_listbox = None
@@ -184,6 +184,8 @@ class PatientForm:
         # self.style.theme_use("forest-light")
 
         self.root.title("SmartDoc")
+        # Set the background color of the root window
+        self.root.configure(background="#6b92d1")  # Replace with your desired color
         # Create Tab Control
         self.tab_control = ttk.Notebook(root)
 
@@ -212,18 +214,45 @@ class PatientForm:
         style.configure("TNotebook.Tab",
                         font=("Arial", 12, "bold"),  # Font style
                         padding=[10, 5],  # Tab padding
-                        background="#0A97B0",  # Tab background color
-                        foreground="#37AFE1")  # Tab text color
+                        background="#355a96",  # Tab background color
+                        foreground="#355a96")  # Tab text color
 
         style.map("TNotebook.Tab",
-                  background=[('selected', '#0A97B0')],  # Change background when selected
-                  foreground=[('selected', '#2A3335')])  # Change text color when selected
+                  background=[('selected', 'red')],  # Change background when selected
+                  foreground=[('selected', 'black')])  # Change text color when selected
 
         style.configure("Treeview", font=("Arial", 12))  # Change font and size
         style.configure("Treeview.Heading", font=("Arial", 12, "bold"))  # Change header font and size
+        style.configure('TNotebook', background='#6b92d1')
+
+        style.configure('Custom.TButton',
+                        background='#0A5EB0',
+                        foreground='black',
+                        font=('Arial', 12, 'bold'),
+                        padding=10
+                        )
+
+        # Hover effect
+        style.map('Custom.TButton',
+                  background=[('active', '#0A5EB0')],
+                  foreground=[('active', 'black')]
+                  )
+        style.configure('delete.TButton',
+                        background='#FF2929',
+                        foreground='black',
+                        font=('Arial', 12, 'bold'),
+                        padding=10
+                        )
+
+        # Hover effect
+        style.map('Custom.TButton',
+                  background=[('active', '#0A5EB0')],  # Darker green on hover
+                  foreground=[('active', 'black')]
+                  )
+
 
         # Pack the Tab Control
-        self.tab_control.pack(expand=1, fill="both", padx=10, pady=5)
+        self.tab_control.pack(expand=1, fill="both", padx=10, pady=5, )
         # Patient Information Tab Contents
         self.create_patient_info_tab()
         # Medical History Tab Contents
@@ -256,37 +285,39 @@ class PatientForm:
         padX_age_size = 10
         # Hebrew font configuration
         hebrew_font = font.Font(family="Arial", size=14)
+        self.logo_label = tk.Label(self.patient_tab, text="SmartDoc", font=hebrew_font, anchor='center')
+        self.logo_label.grid(row=0, column=0,columnspan =2, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
 
         self.f_name_label = tk.Label(self.patient_tab, text="שם פרטי", font=hebrew_font, anchor='center')
-        self.f_name_label.grid(row=0, column=1, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
+        self.f_name_label.grid(row=1, column=1, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
         self.f_name_entry = ttk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right',
                                       style="Rounded.TEntry")
-        self.f_name_entry.grid(row=0, column=0, padx=padX_size, pady=5, sticky='e')  # align the entry to the right
+        self.f_name_entry.grid(row=1, column=0, padx=padX_size, pady=5, sticky='e')  # align the entry to the right
 
         self.l_name_label = tk.Label(self.patient_tab, text="שם משפחה", font=hebrew_font, anchor='center')
-        self.l_name_label.grid(row=1, column=1, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
+        self.l_name_label.grid(row=2, column=1, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
         self.l_name_entry = ttk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right',
                                       style="Rounded.TEntry")
-        self.l_name_entry.grid(row=1, column=0, padx=padX_size, pady=5, sticky='e')  # align the entry to the right
+        self.l_name_entry.grid(row=2, column=0, padx=padX_size, pady=5, sticky='e')  # align the entry to the right
 
         # id input
         self.id_label = tk.Label(self.patient_tab, text="תעודת זהות", font=hebrew_font, anchor='center')
-        self.id_label.grid(row=2, column=1, padx=padX_size, pady=5, sticky='ew')
+        self.id_label.grid(row=3, column=1, padx=padX_size, pady=5, sticky='ew')
         self.id_entry = ttk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right',
                                   style="Rounded.TEntry")
-        self.id_entry.grid(row=2, column=0, padx=padX_size, pady=5, sticky='e')
+        self.id_entry.grid(row=3, column=0, padx=padX_size, pady=5, sticky='e')
 
         # Age Input
         self.age_label = tk.Label(self.patient_tab, text="גיל", font=hebrew_font, anchor='center')
-        self.age_label.grid(row=3, column=1, padx=padX_size, pady=5, sticky='ew')
+        self.age_label.grid(row=4, column=1, padx=padX_size, pady=5, sticky='ew')
         self.age_entry = ttk.Entry(self.patient_tab, font=hebrew_font, width=10, justify='right',
                                    style="Rounded.TEntry")
-        self.age_entry.grid(row=3, column=0, padx=padX_age_size, pady=5, sticky='e')
+        self.age_entry.grid(row=4, column=0, padx=padX_age_size, pady=5, sticky='e')
 
         # Submit Button
-        self.search_button = tk.Button(self.patient_tab, text=" WORD צור קובץ ", font=hebrew_font,
-                                       command=self.collect_data)
-        self.search_button.grid(row=4, column=0, padx=padX_size, pady=10, sticky='we')
+        self.create_button = ttk.Button(self.patient_tab, text=" WORD צור קובץ ", style='Custom.TButton',
+                                        command=self.collect_data)
+        self.create_button.grid(row=5, column=0, padx=padX_size, pady=5, sticky='e')
 
     def create_search_tab(self):
         hebrew_font = ("Arial", 14)
@@ -304,12 +335,12 @@ class PatientForm:
         self.search_entry.grid(row=0, column=2, padx=10, pady=5, sticky='we')
 
         # Search Button
-        self.search_button = tk.Button(self.search_tab, text="חיפוש", font=hebrew_font,
-                                       command=self.search_data)
+        self.search_button = ttk.Button(self.search_tab, text="חיפוש", style='Custom.TButton',
+                                        command=self.search_data)
         self.search_button.grid(row=0, column=1, sticky='we', padx=10, pady=10)
 
-        self.delete_button = tk.Button(self.search_tab, text="איפוס", font=hebrew_font,
-                                       command=self.delete_search_data)
+        self.delete_button = ttk.Button(self.search_tab, text="איפוס", style='delete.TButton',
+                                        command=self.delete_search_data)
         self.delete_button.grid(row=0, column=0, sticky='we', padx=10, pady=10)
 
         self.treeFrame = ttk.Frame(self.search_tab)
@@ -354,7 +385,7 @@ class PatientForm:
 
         # Get the current date in the desired format (e.g., dd-mm-yyyy)
         current_date = datetime.now().strftime('%d-%m-%Y')  # Use hyphens instead of slashes
-        docx = create_docx(first_name, last_name, ID, age)
+        docx = create_docx(first_name, last_name, ID, age, current_date)
         insert_row(first_name, last_name, ID, age, docx, current_date)
         # Clear all entry widgets
         self.f_name_entry.delete(0, tk.END)
