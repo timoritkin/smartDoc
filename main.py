@@ -6,6 +6,7 @@ from datetime import datetime
 from tkinter import messagebox, font, ttk
 from docxtpl import DocxTemplate
 import openpyxl
+from PIL import Image, ImageTk
 
 # Change to the current script directory
 os.chdir(sys.path[0])
@@ -184,6 +185,8 @@ class PatientForm:
         # self.style.theme_use("forest-light")
 
         self.root.title("SmartDoc")
+        self.root.iconbitmap("logo/logo_icon.ico")  # Provide the path to your .ico file
+
         # Set the background color of the root window
         self.root.configure(background="#6b92d1")  # Replace with your desired color
         # Create Tab Control
@@ -192,7 +195,7 @@ class PatientForm:
         self.patient_tab = ttk.Frame(self.tab_control)
         self.tab_control.add(self.patient_tab, text='פרטי מטופל')
 
-        # Medical History Tab
+        # Patients search Tab
         self.search_tab = ttk.Frame(self.tab_control)
         self.tab_control.add(self.search_tab, text='חיפוש מטופל')
 
@@ -223,7 +226,6 @@ class PatientForm:
 
         style.configure("Treeview", font=("Arial", 12))  # Change font and size
         style.configure("Treeview.Heading", font=("Arial", 12, "bold"))  # Change header font and size
-        style.configure('TNotebook', background='#6b92d1')
 
         style.configure('Custom.TButton',
                         background='#0A5EB0',
@@ -249,7 +251,6 @@ class PatientForm:
                   background=[('active', '#0A5EB0')],  # Darker green on hover
                   foreground=[('active', 'black')]
                   )
-
 
         # Pack the Tab Control
         self.tab_control.pack(expand=1, fill="both", padx=10, pady=5, )
@@ -285,8 +286,24 @@ class PatientForm:
         padX_age_size = 10
         # Hebrew font configuration
         hebrew_font = font.Font(family="Arial", size=14)
-        self.logo_label = tk.Label(self.patient_tab, text="SmartDoc", font=hebrew_font, anchor='center')
-        self.logo_label.grid(row=0, column=0,columnspan =2, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
+
+        # Define a modern sans-serif font
+        modern_font = font.Font(family="Helvetica", size=28, weight="bold")
+
+        # Create a modernized label
+        self.logo_label = tk.Label(
+            self.patient_tab,
+            text="SmartDoc",
+            font=modern_font,
+            fg="#3A86FF",  # Bright blue text color
+            bg="#F5F5F5",  # Matches the window background
+            anchor="center"
+
+        )
+
+        # Place the label in the center
+        self.logo_label.grid(row=0, column=0, columnspan=2, pady=20)
+
 
         self.f_name_label = tk.Label(self.patient_tab, text="שם פרטי", font=hebrew_font, anchor='center')
         self.f_name_label.grid(row=1, column=1, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
