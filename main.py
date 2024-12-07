@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import subprocess
 import sys
 import tkinter as tk
@@ -6,7 +7,7 @@ from datetime import datetime
 from tkinter import messagebox, font, ttk
 from docxtpl import DocxTemplate
 import openpyxl
-from PIL import Image, ImageTk
+from db_setup import create_tables
 
 # Change to the current script directory
 os.chdir(sys.path[0])
@@ -147,17 +148,32 @@ def create_docx(f_name, l_name, id_num, age, date):
     return file_path
 
 
-def insert_row(first_name, last_name, ID, age, time, docx):
-    # Verify file path
-    path = "patients data.xlsx"
+def insert_patient_record(first_name, last_name, patient_id, age, time, docx_path):
+    """
+    Inserts a new patient record into the SQLite database.
 
-    # Load workbook and active sheet
-    workbook = openpyxl.load_workbook(path)
-    sheet = workbook.active
+    Parameters:
+        first_name (str): The patient's first name.
+        last_name (str): The patient's last name.
+        patient_id (str): The patient's unique ID.
+        age (str): The patient's age (as a string).
+        time (str): The time of the record (e.g., a timestamp or date).
+        docx_path (str): The path to the patient's document file.
+    """
+    # Connect to the SQLite database
+    conn = sqlite3.connect("patients.db")
+    cursor = conn.cursor()
 
-    row_values = [ID, first_name, last_name, age, docx, time]
-    sheet.append(row_values)
-    workbook.save(path)
+    # Insert the patient record into the patients table
+    cursor.execute("""
+    INSERT INTO patients (patient_id, first_name, last_name, age)
+    VALUES (?, ?, ?, ?)
+    """, (patient_id, first_name, last_name, age))
+
+    # Commit the changes and close the connection
+    conn.commit()
+    print("Patient record inserted successfully!")
+    conn.close()
 
 
 class PatientForm:
@@ -304,7 +320,6 @@ class PatientForm:
         # Place the label in the center
         self.logo_label.grid(row=0, column=0, columnspan=2, pady=20)
 
-
         self.f_name_label = tk.Label(self.patient_tab, text="שם פרטי", font=hebrew_font, anchor='center')
         self.f_name_label.grid(row=1, column=1, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
         self.f_name_entry = ttk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right',
@@ -395,7 +410,7 @@ class PatientForm:
             return
 
         try:
-            age = int(age)
+            age = str(age)
         except ValueError:
             messagebox.showerror("שגיאת קלט", "!הגיל חייב להיות מספר")
             return
@@ -403,7 +418,7 @@ class PatientForm:
         # Get the current date in the desired format (e.g., dd-mm-yyyy)
         current_date = datetime.now().strftime('%d-%m-%Y')  # Use hyphens instead of slashes
         docx = create_docx(first_name, last_name, ID, age, current_date)
-        insert_row(first_name, last_name, ID, age, docx, current_date)
+        insert_patient_record(first_name, last_name, ID, age, docx, current_date)
         # Clear all entry widgets
         self.f_name_entry.delete(0, tk.END)
         self.l_name_entry.delete(0, tk.END)
@@ -414,6 +429,8 @@ class PatientForm:
 
 
 def main():
+    # Call the function to create the tables
+    create_tables()
     root = tk.Tk()
     root.option_add('*Font', 'Arial 14')
     PatientForm(root)
