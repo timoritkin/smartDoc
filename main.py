@@ -8,6 +8,8 @@ from tkinter import messagebox, font, ttk
 from docxtpl import DocxTemplate
 import openpyxl
 import db_setup as db
+import customtkinter
+
 
 # Change to the current script directory
 os.chdir(sys.path[0])
@@ -127,79 +129,24 @@ class PatientForm:
         self.root.title("SmartDoc")
         self.root.iconbitmap("logo/logo_icon.ico")  # Provide the path to your .ico file
 
-        # Set the background color of the root window
-        self.root.configure(background="#6b92d1")  # Replace with your desired color
-        # Create Tab Control
-        self.tab_control = ttk.Notebook(root)
+        # Tab Control Setup
+        self.tab_control = customtkinter.CTkTabview(root)
 
-        self.patient_tab = ttk.Frame(self.tab_control)
-        self.tab_control.add(self.patient_tab, text='פרטי מטופל')
+        # Add tabs with Hebrew names
+        self.patient_tab = self.tab_control.add('המטופל פרטי')
+        # Ensure the parent frame/tab has a solid background
+        self.patient_tab.configure(bg_color="#2B2B2B")  # Change this to your desired background color
 
-        # Patients search Tab
-        self.search_tab = ttk.Frame(self.tab_control)
-        self.tab_control.add(self.search_tab, text='חיפוש מטופל')
+        self.search_tab = self.tab_control.add('מטופל חיפוש')
 
-        # Define a custom style with rounded corners for ttk.Entry
-        self.style.configure("Rounded.TEntry",
-                             relief="solid",  # Border style
-                             borderwidth=2,  # Border width
-                             background="#ffffff",  # Background color
-                             foreground="#2A3335",  # Text color
-                             padding=5)  # Padding inside the entry widget
+        # Pack the Tab Control with proper expansion
+        self.tab_control.pack(expand=True, fill="both", padx=10, pady=5)
 
-        # You can optionally add a focus highlight color
-        self.style.map("Rounded.TEntry",
-                       foreground=[('focus', '#2A3335')],
-                       background=[('focus', 'lightblue')])
-
-        # Customize the tab appearance using ttk.Style
-        style = ttk.Style()
-        style.configure("TNotebook.Tab",
-                        font=("Arial", 12, "bold"),  # Font style
-                        padding=[10, 5],  # Tab padding
-                        background="#355a96",  # Tab background color
-                        foreground="#355a96")  # Tab text color
-
-        style.map("TNotebook.Tab",
-                  background=[('selected', 'red')],  # Change background when selected
-                  foreground=[('selected', 'black')])  # Change text color when selected
-
-        style.configure("Treeview", font=("Arial", 12))  # Change font and size
-        style.configure("Treeview.Heading", font=("Arial", 12, "bold"))  # Change header font and size
-
-        style.configure('Custom.TButton',
-                        background='#0A5EB0',
-                        foreground='black',
-                        font=('Arial', 12, 'bold'),
-                        padding=10
-                        )
-
-        # Hover effect
-        style.map('Custom.TButton',
-                  background=[('active', '#0A5EB0')],
-                  foreground=[('active', 'black')]
-                  )
-        style.configure('delete.TButton',
-                        background='#FF2929',
-                        foreground='black',
-                        font=('Arial', 12, 'bold'),
-                        padding=10
-                        )
-
-        # Hover effect
-        style.map('Custom.TButton',
-                  background=[('active', '#0A5EB0')],  # Darker green on hover
-                  foreground=[('active', 'black')]
-                  )
-
-        # Pack the Tab Control
-        self.tab_control.pack(expand=1, fill="both", padx=10, pady=5, )
-        # Patient Information Tab Contents
+        # Configure tabs
         self.create_patient_info_tab()
-        # Medical History Tab Contents
         self.create_search_tab()
 
-    def search_data(self):
+    def search_data(self, event=None):
         search_term = self.search_entry.get()
 
         # Clear existing items in treeview
@@ -225,111 +172,193 @@ class PatientForm:
 
 
     def create_patient_info_tab(self):
-        # Configure columns to allow proper space distribution
-        self.patient_tab.grid_columnconfigure(0, weight=1, minsize=200)  # For the entry fields
-        self.patient_tab.grid_columnconfigure(1, weight=1)  # For the labels, no expansion
-        # padY_size=100
+        search_term = self.search_entry.get()
+
+        # Clear existing items in treeview
+        for item in self.patient_tree.get_children():
+            self.patient_tree.delete(item)
+
+        # Get search results from database
+        results = db.search_patients(search_term)
+
+        # Keep track of seen patient IDs to avoid duplicates
+        seen_patient_ids = set()
+
+        # Reinsert matching items
+        for row in results:
+            # If this patient hasn't been seen before, insert the row
+            if row[-1] not in seen_patient_ids:
+                self.treeview.insert('', 'end', values=row)
+                seen_patient_ids.add(row[-1])
+
+        # Optional: Show a message if no results found
+        if len(seen_patient_ids) == 0:
+            messagebox.showinfo("Search Results", "No matching records found.")
+
+    def create_patient_info_tab(self):
+        # Configure grid for proper layout
+        self.patient_tab.grid_rowconfigure(0, weight=1)  # Allocate space for the label
+        self.patient_tab.grid_columnconfigure(0, weight=1)  # Adjust columns
+        self.patient_tab.grid_columnconfigure(1, weight=1)  # Adjust columns
+        self.patient_tab.grid_rowconfigure(5, weight=1)  # Adjust columns
+
+        # Set a Hebrew-friendly font
+        hebrew_font = ("Arial", 14)
         padX_size = 10
         padX_age_size = 10
-        # Hebrew font configuration
-        hebrew_font = font.Font(family="Arial", size=14)
 
-        # Define a modern sans-serif font
-        modern_font = font.Font(family="Helvetica", size=28, weight="bold")
-
-        # Create a modernized label
-        self.logo_label = tk.Label(
+        # Logo Label
+        # Customize the label
+        self.logo_label = customtkinter.CTkLabel(
             self.patient_tab,
             text="SmartDoc",
-            font=modern_font,
-            fg="#3A86FF",  # Bright blue text color
-            bg="#F5F5F5",  # Matches the window background
-            anchor="center"
+            width=100,
+            height=50,
+            font=("Helvetica", 28, "bold"),
+            text_color="blue",  # Adjust text color
+        )
+        self.logo_label.grid(row=0, column=0, columnspan=2)
+        # Hebrew Labels and Entries with right alignment
+        # First Name
+        self.f_name_label = customtkinter.CTkLabel(
+            self.patient_tab,
+            text="שם פרטי",
+            font=hebrew_font,
+            anchor="e"  # Right align the text
+        )
+        self.f_name_label.grid(row=1, column=1, padx=10, pady=5, sticky='w')
+
+        self.f_name_entry = customtkinter.CTkEntry(
+            self.patient_tab,
+            font=hebrew_font,
+            width=250,
+            justify='right'
+        )
+        self.f_name_entry.grid(row=1, column=0, padx=10, pady=5, sticky='e')
+
+        # Last Name
+        self.l_name_label = customtkinter.CTkLabel(
+            self.patient_tab,
+            text="שם משפחה",
+            font=hebrew_font,
+            anchor="e"
+        )
+        self.l_name_label.grid(row=2, column=1, padx=10, pady=5, sticky='w')
+        self.l_name_entry = customtkinter.CTkEntry(
+            self.patient_tab,
+            font=hebrew_font,
+            width=250,
+            justify='right'
 
         )
-
-        # Place the label in the center
-        self.logo_label.grid(row=0, column=0, columnspan=2, pady=20)
-
-        self.f_name_label = tk.Label(self.patient_tab, text="שם פרטי", font=hebrew_font, anchor='center')
-        self.f_name_label.grid(row=1, column=1, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
-        self.f_name_entry = ttk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right',
-                                      style="Rounded.TEntry")
-        self.f_name_entry.grid(row=1, column=0, padx=padX_size, pady=5, sticky='e')  # align the entry to the right
-
-        self.l_name_label = tk.Label(self.patient_tab, text="שם משפחה", font=hebrew_font, anchor='center')
-        self.l_name_label.grid(row=2, column=1, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
-        self.l_name_entry = ttk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right',
-                                      style="Rounded.TEntry")
-        self.l_name_entry.grid(row=2, column=0, padx=padX_size, pady=5, sticky='e')  # align the entry to the right
+        self.l_name_entry.grid(row=2, column=0, padx=10, pady=5, sticky='e')  # align the entry to the right
 
         # id input
-        self.id_label = tk.Label(self.patient_tab, text="תעודת זהות", font=hebrew_font, anchor='center')
-        self.id_label.grid(row=3, column=1, padx=padX_size, pady=5, sticky='ew')
-        self.id_entry = ttk.Entry(self.patient_tab, font=hebrew_font, width=30, justify='right',
-                                  style="Rounded.TEntry")
-        self.id_entry.grid(row=3, column=0, padx=padX_size, pady=5, sticky='e')
+
+        self.id_label = customtkinter.CTkLabel(
+            self.patient_tab,
+            text="תעודת זהות",
+            font=hebrew_font,
+            anchor="w"
+        )
+        self.id_label.grid(row=3, column=1, padx=padX_size, pady=5, sticky='w')
+        self.id_entry = customtkinter.CTkEntry(
+            self.patient_tab,
+            font=hebrew_font,
+            width=250,
+            justify='right'
+        )
+        self.id_entry.grid(row=3, column=0, padx=10, pady=5, sticky='e')
 
         # Age Input
-        self.age_label = tk.Label(self.patient_tab, text="גיל", font=hebrew_font, anchor='center')
-        self.age_label.grid(row=4, column=1, padx=padX_size, pady=5, sticky='ew')
-        self.age_entry = ttk.Entry(self.patient_tab, font=hebrew_font, width=10, justify='right',
-                                   style="Rounded.TEntry")
+        self.age_label = customtkinter.CTkLabel(
+            self.patient_tab,
+            text="גיל",
+            font=hebrew_font,
+            anchor="e"
+        )
+        self.age_label.grid(row=4, column=1, padx=10, pady=5, sticky='w')
+        self.age_entry = customtkinter.CTkEntry(
+            self.patient_tab,
+            font=hebrew_font,
+            width=50,
+            justify='right'
+        )
         self.age_entry.grid(row=4, column=0, padx=padX_age_size, pady=5, sticky='e')
 
         # Submit Button
-        self.create_button = ttk.Button(self.patient_tab, text=" WORD צור קובץ ", style='Custom.TButton',
-                                        command=self.collect_data)
+        self.create_button = customtkinter.CTkButton(self.patient_tab, text=" WORD צור קובץ ", width=250,
+                                                     command=self.collect_data,
+
+                                                     )
         self.create_button.grid(row=5, column=0, padx=padX_size, pady=5, sticky='e')
 
+
     def create_search_tab(self):
-        hebrew_font = ("Arial", 14)
+            hebrew_font = ("Arial", 14)
 
-        # Configure column weights to make the layout responsive
-        self.search_tab.columnconfigure(0, weight=1)  # Search button
-        self.search_tab.columnconfigure(1, weight=3)  # Search entry
-        self.search_tab.columnconfigure(2, weight=1)  # Label
-        self.search_tab.rowconfigure(1, weight=1)  # Make treeFrame's row expandable
+            # Configure column weights to make the layout responsive
+            self.search_tab.columnconfigure(0, weight=1)  # Search button
+            self.search_tab.columnconfigure(1, weight=1)  # Search entry
+            self.search_tab.columnconfigure(2, weight=3)  # Label
+            self.search_tab.rowconfigure(1, weight=1)  # Make treeFrame's row expandable
 
-        self.search_label = tk.Label(self.search_tab, text="חיפוש מטופל", font=hebrew_font, anchor='center')
-        self.search_label.grid(row=0, column=3, padx=10, pady=5, sticky='we')
-        self.search_entry = ttk.Entry(self.search_tab, font=hebrew_font, width=30, justify='right',
-                                      style="Rounded.TEntry")
-        self.search_entry.grid(row=0, column=2, padx=10, pady=5, sticky='we')
+            self.search_label = customtkinter.CTkLabel(
+                self.search_tab,
+                text="חיפוש מטופל",
+                font=hebrew_font,
+                anchor="center"
+            )
+            self.search_label.grid(row=0, column=3, padx=10, pady=5, sticky='we')
 
-        # Search Button
-        self.search_button = ttk.Button(self.search_tab, text="חיפוש", style='Custom.TButton',
-                                        command=self.search_data)
-        self.search_button.grid(row=0, column=1, sticky='we', padx=10, pady=10)
+            self.search_entry = customtkinter.CTkEntry(
+                self.search_tab,
+                font=hebrew_font,
 
-        self.delete_button = ttk.Button(self.search_tab, text="איפוס", style='delete.TButton',
-                                        command=self.delete_search_data)
-        self.delete_button.grid(row=0, column=0, sticky='we', padx=10, pady=10)
+                justify='right'
+            )
+            self.search_entry.grid(row=0, column=2, padx=10, pady=10, sticky='we')
+            self.search_entry.bind("<Return>", self.search_data)
 
-        self.treeFrame = ttk.Frame(self.search_tab)
-        self.treeFrame.grid(row=1, column=0, padx=10, pady=10, columnspan=4, sticky='nswe')
+            # Search Button
+            self.search_button = customtkinter.CTkButton(self.search_tab,
+                                                         text="חיפוש",
+                                                         width=100,
+                                                         command=self.search_data)
+            self.search_button.grid(row=0, column=1, sticky='we', padx=10, pady=10)
 
-        self.treeScroll = ttk.Scrollbar(self.treeFrame)
-        self.treeScroll.pack(side="right", fill="y")
+            self.delete_button = customtkinter.CTkButton(self.search_tab,
+                                                         text="איפוס",
+                                                         width=100,
+                                                         fg_color="red",
+                                                         hover_color="#AF1740",
+                                                         command=self.delete_search_data)
+            self.delete_button.grid(row=0, column=0, sticky='we', padx=10, pady=10)
 
-        cols = ("תאריך ביקור", "גיל", "שם פרטי", "שם משפחה", "תעודה מזהה")
-        self.treeview = ttk.Treeview(self.treeFrame, show="headings",
-                                     yscrollcommand=self.treeScroll.set, columns=cols, height=13)
-        # Configure each column
-        for col in cols:
-            # Set column heading with center alignment
-            self.treeview.heading(col, text=col, anchor="center")
+            self.treeFrame = ttk.Frame(self.search_tab)
+            self.treeFrame.grid(row=1, column=0, padx=10, pady=10, columnspan=4, sticky='nswe')
 
-            # Set column width and data alignment
-            self.treeview.column(col, width=100, anchor="center")
-        # Bind the left-click event to the open_docx function
-        self.treeview.bind("<Double-1>", open_word_document)
-        # Bind the Enter key press event to the open_docx function
-        self.treeview.bind("<Return>", open_word_document)
-        self.treeScroll.config(command=self.treeview.yview)
-        self.treeview.pack(fill="both", expand=True)
+            self.treeScroll = ttk.Scrollbar(self.treeFrame)
+            self.treeScroll.pack(side="right", fill="y")
 
-        load_data(self)
+            cols = ("תאריך ביקור", "גיל", "שם פרטי", "שם משפחה", "תעודה מזהה")
+            self.treeview = ttk.Treeview(self.treeFrame, show="headings",
+                                         yscrollcommand=self.treeScroll.set, columns=cols, height=13)
+            # Configure each column
+            for col in cols:
+                # Set column heading with center alignment
+                self.treeview.heading(col, text=col, anchor="center")
+
+                # Set column width and data alignment
+                self.treeview.column(col, width=100, anchor="center")
+            # Bind the left-click event to the open_docx function
+            self.treeview.bind("<Double-1>", open_word_document)
+            # Bind the Enter key press event to the open_docx function
+            self.treeview.bind("<Return>", open_word_document)
+            self.treeScroll.config(command=self.treeview.yview)
+            self.treeview.pack(fill="both", expand=True)
+
+            load_data(self)
 
     def delete_search_data(self):
         self.search_entry.delete(0, tk.END)
