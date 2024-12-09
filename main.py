@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import subprocess
 import sys
 import tkinter as tk
@@ -6,7 +7,7 @@ from datetime import datetime
 from tkinter import messagebox, font, ttk
 from docxtpl import DocxTemplate
 import openpyxl
-from PIL import Image, ImageTk
+import db_setup as db
 
 # Change to the current script directory
 os.chdir(sys.path[0])
@@ -18,94 +19,22 @@ def open_word_document(event):
     if not selected_item:
         return
 
-    # Get the Word file path from the first column
-    word_file = event.widget.item(selected_item, 'values')[0]
-
+    p_id = event.widget.item(selected_item, 'values')[4]
+    path = db.get_docx_path(p_id)
     # Check if file exists before attempting to open
-    if word_file and os.path.exists(word_file):
+    if path and os.path.exists(path):
         try:
             # Use the default application to open the file
             if os.name == 'nt':  # Windows
-                os.startfile(word_file)
+                os.startfile(path)
             elif os.name == 'posix':  # macOS and Linux
-                subprocess.run(['open', word_file], check=True)
+                subprocess.run(['open', path], check=True)
             else:
                 print("Unsupported operating system")
         except Exception as e:
             print(f"Error opening file: {e}")
     else:
         print("File not found")
-
-
-def load_data(self):
-    global path
-    try:
-        # Verify file path
-        path = "patients data.xlsx"
-
-        # Load workbook and active sheet
-        workbook = openpyxl.load_workbook(path)
-        sheet = workbook.active
-
-        # Convert sheet values to a list
-        list_values = list(sheet.values)
-
-        # Check if the sheet is empty
-        if not list_values:
-            print("The Excel sheet is empty.")
-            return
-
-        # Normalize column headers by stripping spaces
-        original_headers = list_values[0]
-        normalized_headers = [header.strip() if header else "" for header in original_headers]
-
-        # Print normalized column headers for debugging
-        print("Normalized column names:")
-        for header in normalized_headers:
-            print(repr(header))
-
-        # Clear existing Treeview contents
-        for item in self.treeview.get_children():
-            self.treeview.delete(item)
-
-        # Predefined columns in the desired order
-        cols = ("קובץ", "תאריך ביקור", "גיל", "שם פרטי", "שם משפחה", "תעודה מזהה")
-
-        # Configure Treeview columns
-        self.treeview['columns'] = cols
-        for col in cols:
-            self.treeview.heading(col, text=col, anchor="center")
-            self.treeview.column(col, width=100, anchor="center")
-        self.treeview.bind('<Double-1>', open_word_document)
-
-        # Insert data rows, mapping to normalized columns
-        for row in list_values[1:]:
-            # Create a dictionary to map normalized data to predefined columns
-            row_dict = dict(zip(normalized_headers, row))
-
-            # Extract values in the desired order
-            ordered_row = [
-                row_dict.get("קובץ", ""),
-                row_dict.get("תאריך ביקור", ""),
-                row_dict.get("גיל", ""),
-                row_dict.get("שם פרטי", ""),
-                row_dict.get("שם משפחה", ""),
-                row_dict.get("תעודה מזהה", "")
-            ]
-
-            # Insert the row with ordered values
-            self.treeview.insert("", "end", values=ordered_row)
-            # After populating the treeview, store the original data
-            for child in self.treeview.get_children():
-                self.original_treeview_data.append(self.treeview.item(child)['values'])
-
-
-    except FileNotFoundError:
-        print(f"Error: File '{path}' not found.")
-    except PermissionError:
-        print(f"Error: No permission to read '{path}'.")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
 
 
 def create_docx(f_name, l_name, id_num, age, date):
@@ -147,17 +76,28 @@ def create_docx(f_name, l_name, id_num, age, date):
     return file_path
 
 
-def insert_row(first_name, last_name, ID, age, time, docx):
-    # Verify file path
-    path = "patients data.xlsx"
+def load_data(self):
+    # Clear existing Treeview contents before inserting new data
+    for item in self.treeview.get_children():
+        self.treeview.delete(item)
 
-    # Load workbook and active sheet
-    workbook = openpyxl.load_workbook(path)
-    sheet = workbook.active
+    # Fetch data and populate the Treeview
+    rows = db.fetch_data()
 
-    row_values = [ID, first_name, last_name, age, docx, time]
-    sheet.append(row_values)
-    workbook.save(path)
+    # Keep track of inserted patient IDs to prevent duplicates
+    inserted_patient_ids = set()
+
+    for row in rows:
+        # Assuming the patient_id is the last element in the row
+        patient_id = row[-1]
+
+        # Only insert if this patient_id hasn't been inserted before
+        if patient_id not in inserted_patient_ids:
+            self.treeview.insert("", tk.END, values=row)
+
+            inserted_patient_ids.add(patient_id)
+
+    print(f"Total rows inserted: {len(inserted_patient_ids)}")
 
 
 class PatientForm:
@@ -260,22 +200,29 @@ class PatientForm:
         self.create_search_tab()
 
     def search_data(self):
-        search_term = self.search_entry.get().lower()
+        search_term = self.search_entry.get()
 
         # Clear existing items in treeview
         for item in self.treeview.get_children():
             self.treeview.delete(item)
 
-        # Reinsert items that match the search term
-        seen_items = set()
-        for child in self.original_treeview_data:
-            # Convert all values to strings and check for search term
-            if any(search_term in str(value).lower() for value in child):
-                # Use tuple of values to check for duplicates
-                item_tuple = tuple(child)
-                if item_tuple not in seen_items:
-                    self.treeview.insert('', 'end', values=child)
-                    seen_items.add(item_tuple)
+        # Get search results from database
+        results = db.search_patients(search_term)
+
+        # Keep track of seen patient IDs to avoid duplicates
+        seen_patient_ids = set()
+
+        # Reinsert matching items
+        for row in results:
+            # If this patient hasn't been seen before, insert the row
+            if row[-1] not in seen_patient_ids:
+                self.treeview.insert('', 'end', values=row)
+                seen_patient_ids.add(row[-1])
+
+        # Optional: Show a message if no results found
+        if len(seen_patient_ids) == 0:
+            messagebox.showinfo("Search Results", "No matching records found.")
+
 
     def create_patient_info_tab(self):
         # Configure columns to allow proper space distribution
@@ -303,7 +250,6 @@ class PatientForm:
 
         # Place the label in the center
         self.logo_label.grid(row=0, column=0, columnspan=2, pady=20)
-
 
         self.f_name_label = tk.Label(self.patient_tab, text="שם פרטי", font=hebrew_font, anchor='center')
         self.f_name_label.grid(row=1, column=1, padx=padX_size, pady=5, sticky='ew')  # align the label to the right
@@ -366,18 +312,23 @@ class PatientForm:
         self.treeScroll = ttk.Scrollbar(self.treeFrame)
         self.treeScroll.pack(side="right", fill="y")
 
-        cols = ("קובץ", "תאריך ביקור", "גיל", "שם פרטי", "שם משפחה", "תעודה מזהה")
+        cols = ("תאריך ביקור", "גיל", "שם פרטי", "שם משפחה", "תעודה מזהה")
         self.treeview = ttk.Treeview(self.treeFrame, show="headings",
                                      yscrollcommand=self.treeScroll.set, columns=cols, height=13)
-        self.treeview.column("קובץ", width=100)
-        self.treeview.column("תאריך ביקור", width=100)
-        self.treeview.column("גיל", width=50)
-        self.treeview.column("שם משפחה", width=100)
-        self.treeview.column("שם פרטי", width=100)
-        self.treeview.column("תעודה מזהה", width=100)
+        # Configure each column
+        for col in cols:
+            # Set column heading with center alignment
+            self.treeview.heading(col, text=col, anchor="center")
 
-        self.treeview.pack(fill="both", expand=True)
+            # Set column width and data alignment
+            self.treeview.column(col, width=100, anchor="center")
+        # Bind the left-click event to the open_docx function
+        self.treeview.bind("<Double-1>", open_word_document)
+        # Bind the Enter key press event to the open_docx function
+        self.treeview.bind("<Return>", open_word_document)
         self.treeScroll.config(command=self.treeview.yview)
+        self.treeview.pack(fill="both", expand=True)
+
         load_data(self)
 
     def delete_search_data(self):
@@ -395,7 +346,7 @@ class PatientForm:
             return
 
         try:
-            age = int(age)
+            age = str(age)
         except ValueError:
             messagebox.showerror("שגיאת קלט", "!הגיל חייב להיות מספר")
             return
@@ -403,17 +354,18 @@ class PatientForm:
         # Get the current date in the desired format (e.g., dd-mm-yyyy)
         current_date = datetime.now().strftime('%d-%m-%Y')  # Use hyphens instead of slashes
         docx = create_docx(first_name, last_name, ID, age, current_date)
-        insert_row(first_name, last_name, ID, age, docx, current_date)
+        db.insert_patient_record(first_name, last_name, ID, age, docx, current_date)
         # Clear all entry widgets
         self.f_name_entry.delete(0, tk.END)
         self.l_name_entry.delete(0, tk.END)
         self.id_entry.delete(0, tk.END)
         self.age_entry.delete(0, tk.END)
         load_data(self)
-        # patient = Patient(first_name, last_name, ID, age)
 
 
 def main():
+    # Call the function to create the tables
+    db.create_tables()
     root = tk.Tk()
     root.option_add('*Font', 'Arial 14')
     PatientForm(root)
