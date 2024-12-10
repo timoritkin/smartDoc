@@ -1,14 +1,13 @@
 import os
-import sqlite3
 import subprocess
 import sys
 import tkinter as tk
 from datetime import datetime
 from tkinter import messagebox, font, ttk
 from docxtpl import DocxTemplate
-import openpyxl
 import db_setup as db
 import customtkinter
+from PIL import Image, ImageTk
 
 
 # Change to the current script directory
@@ -128,14 +127,14 @@ class PatientForm:
 
         self.root.title("SmartDoc")
         self.root.iconbitmap("logo/logo_icon.ico")  # Provide the path to your .ico file
+        self.root.configure(bg="#E8ECD7")  # Use a color name or hex code
+
 
         # Tab Control Setup
-        self.tab_control = customtkinter.CTkTabview(root)
+        self.tab_control = customtkinter.CTkTabview(root, fg_color="#E8ECD7")
 
         # Add tabs with Hebrew names
         self.patient_tab = self.tab_control.add('המטופל פרטי')
-        # Ensure the parent frame/tab has a solid background
-        self.patient_tab.configure(bg_color="#2B2B2B")  # Change this to your desired background color
 
         self.search_tab = self.tab_control.add('מטופל חיפוש')
 
@@ -206,17 +205,18 @@ class PatientForm:
         hebrew_font = ("Arial", 14)
         padX_size = 10
         padX_age_size = 10
-
+        # Load an image using Pillow
+        image = Image.open("logo/SamartDoc.png")
+        image = image.resize((250, 150))  # Resize the image if needed
+        self.photo = ImageTk.PhotoImage(image)  # Keep a reference to the image
         # Logo Label
-        # Customize the label
+
         self.logo_label = customtkinter.CTkLabel(
             self.patient_tab,
-            text="SmartDoc",
-            width=100,
-            height=50,
-            font=("Helvetica", 28, "bold"),
-            text_color="blue",  # Adjust text color
+            image=self.photo,
+            text=""  # Set text to an empty string to only show the image
         )
+
         self.logo_label.grid(row=0, column=0, columnspan=2)
         # Hebrew Labels and Entries with right alignment
         # First Name
